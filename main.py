@@ -1,0 +1,52 @@
+import argparse
+import os
+
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+
+
+def setupagent(api_key):
+    print("Hello from agent!")
+    client = genai.Client(api_key=api_key)
+    return client
+
+
+def pregunta(client, args):
+    messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
+    response = client.models.generate_content(
+        model="gemini-2.5-flash", contents=messages
+    )
+    return response
+
+
+def main():
+    load_dotenv()
+    parser = argparse.ArgumentParser(description="Chatbot")
+    parser.add_argument("user_prompt", type=str, help="User prompt")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    args = parser.parse_args()
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    if api_key is None:
+        raise RuntimeError("I can find the api key bro")
+    else:
+        client = setupagent(api_key)
+        respond = pregunta(
+            client,
+            args,
+        )
+        if args.verbose:
+            print(f"User prompt: {args.user_prompt}")
+            if respond.usage_metadata is not None:
+                print(f"Prompt tokens: {respond.usage_metadata.prompt_token_count}")
+                print(
+                    f"Response tokens: {respond.usage_metadata.candidates_token_count}"
+                )
+
+        print(f"Response:\n{respond.text}")
+
+
+if __name__ == "__main__":
+    main()
