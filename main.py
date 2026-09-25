@@ -1,24 +1,48 @@
 import argparse
 import os
-
+import json
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from openai import OpenAI
+
+from functions import call_function
+from functions.call_function import available_functions
+from functions.get_files_info import get_files_info
+
+system_prompt = """
+You are a helpful AI coding agent.
+
+When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+
+- List files and directories
+
+All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+"""
 
 
 def setupagent(api_key):
     print("Hello from agent!")
-    client = genai.Client(api_key=api_key)
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
     return client
 
 
 def pregunta(client, args):
-    messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
-    response = client.models.generate_content(
-        model="gemini-2.5-flash", contents=messages
-    )
-    return response
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": args.user_prompt},
+    ]
 
+    response = client.chat.completions.create(
+    model="openrouter/free",
+    messages=messages,
+    tools=available_functions
+    )
+
+
+
+    return response
 
 def main():
     load_dotenv()
@@ -27,7 +51,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     args = parser.parse_args()
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("OPENROUTER_API_KEY")
 
     if api_key is None:
         raise RuntimeError("I can find the api key bro")
@@ -39,13 +63,21 @@ def main():
         )
         if args.verbose:
             print(f"User prompt: {args.user_prompt}")
-            if respond.usage_metadata is not None:
-                print(f"Prompt tokens: {respond.usage_metadata.prompt_token_count}")
-                print(
-                    f"Response tokens: {respond.usage_metadata.candidates_token_count}"
-                )
+            if respond.usage is not None:
+                print(f"Prompt tokens: {respond.usage.prompt_tokens}")
+                print(f"Response tokens: {respond.usage.completion_tokens}")
 
-        print(f"Response:\n{respond.text}")
+        message = respond.choices[0].message
+        if( message.tool_calls):
+            print(message.tool_calls)
+            for tool_call in message.tool_calls:
+                function_args = json.loads(tool_call.function.arguments or "{}")
+                print(f"Calling function: {tool_call.function.name}({function_args})")
+        else:
+            print(f"Response:\n{respond.choices[0].message.content}")
+
+
+
 
 
 if __name__ == "__main__":
