@@ -1,23 +1,23 @@
 import os
 
 MAX_CHARS = 10000
-schema_get_files_content= {
+schema_get_file_content= {
     "type": "function",
     "function": {
         "name": "get_file_content",
-        "description": "get the content of the files",
+        "description": "This function read the content of the file",
         "parameters": {
             "type": "object",
             "properties": {
-                "directory": {
+                "file_path": {
                     "type": "string",
-                    "description": "Directory path to list content from, relative to the working directory (default is the working directory itself)",
+                    "description": "The path to the file to read, relative to the working directory",
                 },
             },
+            "required":["file_path"]
         },
     },
 }
-
 
 
 

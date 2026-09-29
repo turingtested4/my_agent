@@ -1,32 +1,36 @@
 import os
 import subprocess
 
-
-
-schema_run_python_file= {
+schema_run_python_file = {
     "type": "function",
     "function": {
         "name": "run_python_file",
-        "description": "run a python file",
+        "description": "This function will run a python file, remember that a python file in orer to run must have an .py at the end",
         "parameters": {
             "type": "object",
             "properties": {
-                "directory": {
+                "file_path": {
                     "type": "string",
-                    "description": "Runs the python file",
+                    "description": "The file path to the file that you need to run",
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                    },
+                    "description": "the arguments that need to be passed to the python file that you want to run",
                 },
             },
+            "required": ["file_path"],
         },
     },
 }
-
 
 
 def run_python_file(
     working_directory: str, file_path: str, args: list[str] | None = None
 ) -> str:
     try:
-
         path_w = os.path.abspath(working_directory)
         path_file = os.path.abspath(os.path.join(working_directory, file_path))
         common = os.path.commonpath([path_w, path_file])
@@ -45,7 +49,9 @@ def run_python_file(
         if args:
             command.extend(args)
 
-        result = subprocess.run(command,cwd=path_w,capture_output=True,text=True,timeout=30)
+        result = subprocess.run(
+            command, cwd=path_w, capture_output=True, text=True, timeout=30
+        )
 
         output = []
 

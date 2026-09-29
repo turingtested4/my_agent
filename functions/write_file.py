@@ -10,11 +10,15 @@ schema_write_file= {
         "parameters": {
             "type": "object",
             "properties": {
-                "directory": {
+                "file_path": {
                     "type": "string",
-                    "description": "Runs the python file",
+                    "description": "The path to the file where you are going to write in",
                 },
-            },
+                "content": {
+                    "type": "string",
+                    "description": "the data you are going to write into the file ",
+                },
+            },"required": ["file_path","content"],
         },
     },
 }

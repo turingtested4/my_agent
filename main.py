@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from functions import call_function
 from functions.call_function import available_functions
+from functions.call_function import call_function
 from functions.get_files_info import get_files_info
 
 system_prompt = """
@@ -14,6 +15,9 @@ You are a helpful AI coding agent.
 When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
 
 - List files and directories
+- Read file contents
+- Execute Python files with optional arguments
+- Write or overwrite files
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
@@ -28,20 +32,12 @@ def setupagent(api_key):
     return client
 
 
-def pregunta(client, args):
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": args.user_prompt},
-    ]
-
+def pregunta(client, args, messages):
     response = client.chat.completions.create(
-    model="openrouter/free",
-    messages=messages,
-    tools=available_functions
-    )
-
-
-
+        model="openrouter/free",
+        messages=messages,
+        tools=available_functions
+        )
     return response
 
 def main():
@@ -53,13 +49,21 @@ def main():
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
 
+    messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": args.user_prompt},
+        ]
     if api_key is None:
         raise RuntimeError("I can find the api key bro")
     else:
         client = setupagent(api_key)
+
+    for _ in range(20):
+
         respond = pregunta(
             client,
             args,
+           messages
         )
         if args.verbose:
             print(f"User prompt: {args.user_prompt}")
@@ -68,14 +72,26 @@ def main():
                 print(f"Response tokens: {respond.usage.completion_tokens}")
 
         message = respond.choices[0].message
+        messages.append(message)
+
         if( message.tool_calls):
             print(message.tool_calls)
             for tool_call in message.tool_calls:
                 function_args = json.loads(tool_call.function.arguments or "{}")
                 print(f"Calling function: {tool_call.function.name}({function_args})")
+                result_message = call_function(tool_call)
+
+                if not result_message.get("content"):
+                     raise RuntimeError("Something went wrong!")
+                else:
+                    print(f"-> {result_message['content']}")
+                    messages.append(result_message)
+
+
+
         else:
             print(f"Response:\n{respond.choices[0].message.content}")
-
+            break
 
 
 
